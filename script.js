@@ -7,9 +7,14 @@ const defaultThemes = {
   'mode-classic': ['#ffcc00', '#ff6600', '#cc3300', '#ff9900'],
   'mode-cool': ['#264653', '#2a9d8f', '#8ab17d', '#457b9d']
 };
+const MODIFIERS = ['', '🤬', '🔀', '🇬🇧'];
 
 let themes = { ...defaultThemes };
 let state = {
+  itemModel: {
+    baseItems: [],
+    modifiersById: {}
+  },
   items: [],
   settings: {
     backgroundColor: '#00ff00',
@@ -35,12 +40,15 @@ const el = {
   wheelCanvas: document.getElementById('wheelCanvas'),
   spinBtn: document.getElementById('spinBtn'),
   emptyState: document.getElementById('emptyState'),
-  itemForm: document.getElementById('itemForm'),
-  itemText: document.getElementById('itemText'),
-  itemModifier: document.getElementById('itemModifier'),
-  itemList: document.getElementById('itemList'),
+  itemsTextarea: document.getElementById('itemsTextarea'),
+  modifierMatrix: document.getElementById('modifierMatrix'),
   togglePanelBtn: document.getElementById('togglePanelBtn'),
+  expandPanelBtn: document.getElementById('expandPanelBtn'),
   itemPanel: document.getElementById('itemPanel'),
+  itemsCardToggle: document.getElementById('itemsCardToggle'),
+  itemsCardBody: document.getElementById('itemsCardBody'),
+  modifiersCardToggle: document.getElementById('modifiersCardToggle'),
+  modifiersCardBody: document.getElementById('modifiersCardBody'),
   settingsBtn: document.getElementById('settingsBtn'),
   settingsModal: document.getElementById('settingsModal'),
   closeSettingsBtn: document.getElementById('closeSettingsBtn'),
@@ -83,7 +91,8 @@ async function init() {
 function loadState() {
   try {
     const savedItems = JSON.parse(localStorage.getItem(STORAGE_ITEMS_KEY) || '[]');
-    if (Array.isArray(savedItems)) state.items = sanitizeItems(savedItems);
+    state.itemModel = sanitizeItemModel(savedItems);
+    rebuildDerivedItems();
     const savedSettings = JSON.parse(localStorage.getItem(STORAGE_SETTINGS_KEY) || '{}');
     state.settings = { ...state.settings, ...sanitizeSettings(savedSettings) };
   } catch {
@@ -135,12 +144,8 @@ function applySettingsUI() {
 }
 
 function bindEvents() {
-  el.itemForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const text = el.itemText.value.trim();
-    if (!text) return;
-    state.items.push({ text, modifier: el.itemModifier.value || '' });
-    el.itemForm.reset();
+  el.itemsTextarea.addEventListener('input', () => {
+    syncBaseItemsFromTextarea();
     saveItems();
     renderAll();
   });
@@ -148,9 +153,17 @@ function bindEvents() {
   el.spinBtn.addEventListener('click', startSpin);
 
   el.togglePanelBtn.addEventListener('click', () => {
-    el.itemPanel.classList.toggle('collapsed');
-    el.togglePanelBtn.textContent = el.itemPanel.classList.contains('collapsed') ? '⟩' : '⟨';
+    el.itemPanel.classList.add('collapsed');
+    el.expandPanelBtn.classList.remove('hidden');
   });
+
+  el.expandPanelBtn.addEventListener('click', () => {
+    el.itemPanel.classList.remove('collapsed');
+    el.expandPanelBtn.classList.add('hidden');
+  });
+
+  el.itemsCardToggle.addEventListener('click', () => toggleCard(el.itemsCardToggle, el.itemsCardBody));
+  el.modifiersCardToggle.addEventListener('click', () => toggleCard(el.modifiersCardToggle, el.modifiersCardBody));
 
   el.settingsBtn.addEventListener('click', () => el.settingsModal.classList.remove('hidden'));
   el.closeSettingsBtn.addEventListener('click', () => el.settingsModal.classList.add('hidden'));
@@ -169,47 +182,47 @@ function bindEvents() {
     }
   });
 
-  const settingHandlers = [
-    ['bgColor', (v) => (state.settings.backgroundColor = v)],
-    ['themeName', (v) => (state.settings.themeName = v)],
-    ['borderEnabled', (_, checked) => (state.settings.borderEnabled = checked)],
-    ['borderColor', (v) => (state.settings.borderColor = v)],
-    ['borderWidth', (v) => (state.settings.borderWidth = clamp(parseFloat(v) || 1, 0.5, 8))],
-    ['fontFamily', (v) => (state.settings.fontFamily = v)],
-    ['fontSize', (v) => (state.settings.fontSize = clamp(parseInt(v, 10) || 14, 10, 24))],
-    ['truncateText', (_, checked) => (state.settings.truncateText = checked)],
-    ['wheelSize', (v) => (state.settings.wheelSizeVh = clamp(parseInt(v, 10) || 80, 30, 100))],
-    ['spinDuration', (v) => (state.settings.spinDurationSec = clamp(parseInt(v, 10) || 5, 1, 15))],
-    ['centerImage', (v) => (state.settings.centerImagePath = v.trim())],
-    ['pointerType', (v) => (state.settings.pointerType = v)],
-    ['pointerImage', (v) => (state.settings.pointerImagePath = v.trim())]
-  ];
-
-  settingHandlers.forEach(([key, setter]) => {
-    const node = el[key];
-    node.addEventListener('input', () => {
-      setter(node.value, node.checked);
-      onSettingsChanged();
-    });
-    node.addEventListener('change', () => {
-      setter(node.value, node.checked);
+  [
+    'bgColor', 'themeName', 'borderEnabled', 'borderColor', 'borderWidth',
+    'fontFamily', 'fontSize', 'truncateText', 'wheelSize', 'spinDuration',
+    'centerImage', 'pointerType', 'pointerImage'
+  ].forEach((id) => {
+    el[id].addEventListener('input', () => {
+      state.settings.backgroundColor = el.bgColor.value;
+      state.settings.themeName = el.themeName.value;
+      state.settings.borderEnabled = el.borderEnabled.checked;
+      state.settings.borderColor = el.borderColor.value;
+      state.settings.borderWidth = clamp(parseFloat(el.borderWidth.value) || 1, 0.5, 8);
+      state.settings.fontFamily = el.fontFamily.value;
+      state.settings.fontSize = clamp(parseInt(el.fontSize.value, 10) || 14, 10, 24);
+      state.settings.truncateText = el.truncateText.checked;
+      state.settings.wheelSizeVh = clamp(parseInt(el.wheelSize.value, 10) || 80, 30, 100);
+      state.settings.spinDurationSec = clamp(parseInt(el.spinDuration.value, 10) || 5, 1, 15);
+      state.settings.centerImagePath = el.centerImage.value.trim();
+      state.settings.pointerType = el.pointerType.value === 'image' ? 'image' : 'system';
+      state.settings.pointerImagePath = el.pointerImage.value.trim();
       onSettingsChanged();
     });
   });
 
-  el.exportItemsBtn.addEventListener('click', () => downloadJson('items.json', state.items));
-  el.exportSettingsBtn.addEventListener('click', () => downloadJson('settings.json', state.settings));
+  el.exportItemsBtn.addEventListener('click', () => {
+    downloadJson('items.json', exportItemModel());
+  });
 
   el.importItemsInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const parsed = await parseJsonFile(file);
-    if (Array.isArray(parsed)) {
-      state.items = sanitizeItems(parsed);
-      saveItems();
-      renderAll();
-    }
+    const imported = sanitizeItemModel(parsed || []);
+    state.itemModel = imported;
+    rebuildDerivedItems();
+    saveItems();
+    renderAll();
     e.target.value = '';
+  });
+
+  el.exportSettingsBtn.addEventListener('click', () => {
+    downloadJson('settings.json', state.settings);
   });
 
   el.importSettingsInput.addEventListener('change', async (e) => {
@@ -227,6 +240,12 @@ function bindEvents() {
   window.addEventListener('resize', updateLayout);
 }
 
+function toggleCard(toggleEl, bodyEl) {
+  const isExpanded = toggleEl.getAttribute('aria-expanded') === 'true';
+  toggleEl.setAttribute('aria-expanded', String(!isExpanded));
+  bodyEl.classList.toggle('hidden', isExpanded);
+}
+
 function onSettingsChanged() {
   saveSettings();
   applySettingsUI();
@@ -235,64 +254,210 @@ function onSettingsChanged() {
 }
 
 function renderAll() {
-  renderItemList();
+  renderItemsTextarea();
+  renderModifierMatrix();
   drawWheel();
   const noItems = state.items.length === 0;
   el.spinBtn.disabled = noItems || state.isSpinning;
   el.emptyState.style.display = noItems ? 'flex' : 'none';
 }
 
-function renderItemList() {
-  el.itemList.innerHTML = '';
-  state.items.forEach((item, index) => {
-    const li = document.createElement('li');
-    li.className = 'item-row';
+function renderItemsTextarea() {
+  const lines = state.itemModel.baseItems.map((item) => item.text);
+  const joined = lines.join('\n');
+  if (el.itemsTextarea.value !== joined) {
+    el.itemsTextarea.value = joined;
+  }
+}
 
-    const textInput = document.createElement('input');
-    textInput.type = 'text';
-    textInput.value = item.text;
+function renderModifierMatrix() {
+  el.modifierMatrix.innerHTML = '';
+  const header = document.createElement('div');
+  header.className = 'matrix-header';
+  header.innerHTML = '<span>item</span><span>default</span><span>🤬</span><span>🔀</span><span>🇬🇧</span><span></span>';
+  el.modifierMatrix.appendChild(header);
 
-    const modSelect = document.createElement('select');
-    ['', '🤬', '🔀', '🇬🇧'].forEach((m) => {
-      const opt = document.createElement('option');
-      opt.value = m;
-      opt.textContent = m || 'None';
-      if (m === item.modifier) opt.selected = true;
-      modSelect.appendChild(opt);
+  state.itemModel.baseItems.forEach((base) => {
+    const row = document.createElement('div');
+    row.className = 'matrix-row';
+    const config = state.itemModel.modifiersById[base.id] || defaultModifierConfig();
+
+    const itemLabel = document.createElement('span');
+    itemLabel.className = 'matrix-col-item';
+    itemLabel.textContent = base.text;
+    row.appendChild(itemLabel);
+
+    MODIFIERS.forEach((modifier) => {
+      const wrap = document.createElement('span');
+      wrap.className = 'matrix-col-check';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = Boolean(config[modifierKey(modifier)]);
+      checkbox.addEventListener('change', () => {
+        state.itemModel.modifiersById[base.id][modifierKey(modifier)] = checkbox.checked;
+        rebuildDerivedItems();
+        saveItems();
+        renderAll();
+      });
+      wrap.appendChild(checkbox);
+      row.appendChild(wrap);
     });
 
-    textInput.addEventListener('input', () => {
-      state.items[index].text = textInput.value;
-      saveItems();
-      drawWheel();
-    });
-    modSelect.addEventListener('change', () => {
-      state.items[index].modifier = modSelect.value;
-      saveItems();
-      drawWheel();
-    });
-
-    const controls = document.createElement('div');
-    controls.className = 'item-row-controls';
+    const removeWrap = document.createElement('span');
+    removeWrap.className = 'matrix-col-remove';
     const removeBtn = document.createElement('button');
-    removeBtn.textContent = 'Remove';
+    removeBtn.className = 'matrix-delete-btn';
+    removeBtn.type = 'button';
+    removeBtn.setAttribute('aria-label', `Remove ${base.text}`);
+    removeBtn.innerHTML = '<img src="imgs/delete.svg" alt="" />';
     removeBtn.addEventListener('click', () => {
-      state.items.splice(index, 1);
+      state.itemModel.baseItems = state.itemModel.baseItems.filter((it) => it.id !== base.id);
+      delete state.itemModel.modifiersById[base.id];
+      rebuildDerivedItems();
       saveItems();
       renderAll();
     });
+    removeWrap.appendChild(removeBtn);
+    row.appendChild(removeWrap);
 
-    controls.appendChild(removeBtn);
-    li.appendChild(textInput);
-    li.appendChild(modSelect);
-    li.appendChild(controls);
-    el.itemList.appendChild(li);
+    el.modifierMatrix.appendChild(row);
   });
+}
+
+function syncBaseItemsFromTextarea() {
+  const lines = el.itemsTextarea.value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const updatedBaseItems = [];
+  const nextModifiers = {};
+  const usedIds = new Set();
+
+  lines.forEach((line) => {
+    const existing = state.itemModel.baseItems.find((it) => it.text === line && !usedIds.has(it.id));
+    if (existing) {
+      usedIds.add(existing.id);
+      updatedBaseItems.push(existing);
+      nextModifiers[existing.id] = state.itemModel.modifiersById[existing.id] || defaultModifierConfig();
+      return;
+    }
+    const newItem = { id: makeId(), text: line };
+    updatedBaseItems.push(newItem);
+    nextModifiers[newItem.id] = defaultModifierConfig();
+  });
+
+  state.itemModel.baseItems = updatedBaseItems;
+  state.itemModel.modifiersById = nextModifiers;
+  rebuildDerivedItems();
+}
+
+function rebuildDerivedItems() {
+  const derived = [];
+  state.itemModel.baseItems.forEach((base) => {
+    const config = state.itemModel.modifiersById[base.id] || defaultModifierConfig();
+    MODIFIERS.forEach((modifier) => {
+      if (config[modifierKey(modifier)]) {
+        derived.push({ text: base.text, modifier });
+      }
+    });
+  });
+  state.items = derived;
+}
+
+function exportItemModel() {
+  return {
+    baseItems: state.itemModel.baseItems.map((it) => it.text),
+    modifiers: state.itemModel.baseItems.map((it) => ({
+      item: it.text,
+      enabled: enabledModifiers(state.itemModel.modifiersById[it.id])
+    }))
+  };
+}
+
+function sanitizeItemModel(raw) {
+  if (raw && typeof raw === 'object' && !Array.isArray(raw) && Array.isArray(raw.baseItems) && Array.isArray(raw.modifiers)) {
+    const baseItems = raw.baseItems
+      .map((text) => (typeof text === 'string' ? text.trim() : ''))
+      .filter(Boolean)
+      .map((text) => ({ id: makeId(), text }));
+
+    const modifiersById = {};
+    baseItems.forEach((base, idx) => {
+      const modifierEntry = raw.modifiers[idx];
+      const enabled = Array.isArray(modifierEntry?.enabled) ? modifierEntry.enabled : [];
+      modifiersById[base.id] = {
+        default: enabled.includes('default'),
+        angry: enabled.includes('🤬'),
+        random: enabled.includes('🔀'),
+        english: enabled.includes('🇬🇧')
+      };
+    });
+    return { baseItems, modifiersById };
+  }
+
+  const sanitizedList = sanitizeLegacyItems(Array.isArray(raw) ? raw : []);
+  const grouped = [];
+  const keyMap = new Map();
+
+  sanitizedList.forEach((entry) => {
+    if (!keyMap.has(entry.text)) {
+      const id = makeId();
+      keyMap.set(entry.text, id);
+      grouped.push({ id, text: entry.text, config: defaultModifierConfig() });
+    }
+    const found = grouped.find((it) => it.text === entry.text);
+    found.config[modifierKey(entry.modifier)] = true;
+  });
+
+  const baseItems = grouped.map((it) => ({ id: it.id, text: it.text }));
+  const modifiersById = {};
+  grouped.forEach((it) => {
+    modifiersById[it.id] = it.config;
+  });
+
+  return { baseItems, modifiersById };
+}
+
+function sanitizeLegacyItems(list) {
+  return list
+    .filter((it) => it && typeof it.text === 'string')
+    .map((it) => ({ text: it.text.trim(), modifier: MODIFIERS.includes(it.modifier) ? it.modifier : '' }))
+    .filter((it) => Boolean(it.text));
+}
+
+function defaultModifierConfig() {
+  return {
+    default: true,
+    angry: false,
+    random: false,
+    english: false
+  };
+}
+
+function modifierKey(modifier) {
+  if (modifier === '🤬') return 'angry';
+  if (modifier === '🔀') return 'random';
+  if (modifier === '🇬🇧') return 'english';
+  return 'default';
+}
+
+function enabledModifiers(config = defaultModifierConfig()) {
+  return [
+    config.default ? 'default' : null,
+    config.angry ? '🤬' : null,
+    config.random ? '🔀' : null,
+    config.english ? '🇬🇧' : null
+  ].filter(Boolean);
+}
+
+function makeId() {
+  return `item-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 }
 
 function updateLayout() {
   const vh = state.settings.wheelSizeVh;
-  const sizePx = Math.min((window.innerHeight * vh) / 100, window.innerWidth - 160);
+  const sizePx = Math.min((window.innerHeight * vh) / 100, window.innerWidth - 120);
   const finalSize = Math.max(300, sizePx);
   const wrap = document.querySelector('.wheel-wrap');
   wrap.style.width = `${finalSize}px`;
@@ -431,12 +596,6 @@ function loadCenterImage() {
   img.src = state.settings.centerImagePath;
 }
 
-function sanitizeItems(list) {
-  return list
-    .filter((it) => it && typeof it.text === 'string')
-    .map((it) => ({ text: it.text, modifier: ['', '🤬', '🔀', '🇬🇧'].includes(it.modifier) ? it.modifier : '' }));
-}
-
 function sanitizeSettings(raw) {
   return {
     backgroundColor: isColor(raw.backgroundColor) ? raw.backgroundColor : state.settings.backgroundColor,
@@ -456,7 +615,7 @@ function sanitizeSettings(raw) {
 }
 
 function saveItems() {
-  localStorage.setItem(STORAGE_ITEMS_KEY, JSON.stringify(state.items));
+  localStorage.setItem(STORAGE_ITEMS_KEY, JSON.stringify(exportItemModel()));
 }
 
 function saveSettings() {
