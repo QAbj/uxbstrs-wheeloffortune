@@ -9,29 +9,14 @@
 <body>
   <button id="settingsBtn" class="settings-btn" aria-label="Open settings">⚙ Settings</button>
 
+  <button id="expandPanelBtn" class="expand-panel-btn hidden" aria-label="Expand panel">&gt;</button>
+
   <div class="app-layout">
     <aside id="itemPanel" class="item-panel open">
       <div class="panel-header">
-        <h2>Items</h2>
+        <h2>Entries</h2>
         <button id="togglePanelBtn" class="small-btn" aria-label="Collapse panel">⟨</button>
       </div>
-
-      <form id="itemForm" class="item-form">
-        <label>
-          Text
-          <input id="itemText" type="text" maxlength="80" required placeholder="e.g. Design Standards" />
-        </label>
-        <label>
-          Modifier
-          <select id="itemModifier">
-            <option value="">None</option>
-            <option value="🤬">🤬</option>
-            <option value="🔀">🔀</option>
-            <option value="🇬🇧">🇬🇧</option>
-          </select>
-        </label>
-        <button type="submit">Add Item</button>
-      </form>
 
       <div class="panel-actions">
         <button id="exportItemsBtn">Export items.json</button>
@@ -40,7 +25,25 @@
         </label>
       </div>
 
-      <ul id="itemList" class="item-list"></ul>
+      <section class="panel-card" id="itemsCard">
+        <button id="itemsCardToggle" class="card-header" type="button" aria-expanded="true">
+          <span>Items</span>
+          <span class="chevron">▾</span>
+        </button>
+        <div id="itemsCardBody" class="card-body">
+          <textarea id="itemsTextarea" maxlength="5000" spellcheck="false" aria-label="Items textarea"></textarea>
+        </div>
+      </section>
+
+      <section class="panel-card" id="modifiersCard">
+        <button id="modifiersCardToggle" class="card-header" type="button" aria-expanded="true">
+          <span>Modificators</span>
+          <span class="chevron">▾</span>
+        </button>
+        <div id="modifiersCardBody" class="card-body">
+          <div id="modifierMatrix" class="modifier-matrix"></div>
+        </div>
+      </section>
     </aside>
 
     <main class="wheel-stage">
