@@ -1,0 +1,15 @@
+{
+  "backgroundColor": "#00ff00",
+  "themeName": "mode-autumn",
+  "borderEnabled": true,
+  "borderColor": "#ffffff",
+  "borderWidth": 1,
+  "fontFamily": "Arial",
+  "fontSize": 14,
+  "truncateText": true,
+  "wheelSizeVh": 80,
+  "spinDurationSec": 5,
+  "centerImagePath": "",
+  "pointerType": "system",
+  "pointerImagePath": ""
+}
