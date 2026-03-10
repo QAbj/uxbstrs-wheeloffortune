@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Local Wheel of Fortune</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <button id="settingsBtn" class="settings-btn" aria-label="Open settings">⚙ Settings</button>
+
+  <div class="app-layout">
+    <aside id="itemPanel" class="item-panel open">
+      <div class="panel-header">
+        <h2>Items</h2>
+        <button id="togglePanelBtn" class="small-btn" aria-label="Collapse panel">⟨</button>
+      </div>
+
+      <form id="itemForm" class="item-form">
+        <label>
+          Text
+          <input id="itemText" type="text" maxlength="80" required placeholder="e.g. Design Standards" />
+        </label>
+        <label>
+          Modifier
+          <select id="itemModifier">
+            <option value="">None</option>
+            <option value="🤬">🤬</option>
+            <option value="🔀">🔀</option>
+            <option value="🇬🇧">🇬🇧</option>
+          </select>
+        </label>
+        <button type="submit">Add Item</button>
+      </form>
+
+      <div class="panel-actions">
+        <button id="exportItemsBtn">Export items.json</button>
+        <label class="file-btn">Import items.json
+          <input id="importItemsInput" type="file" accept="application/json,.json" />
+        </label>
+      </div>
+
+      <ul id="itemList" class="item-list"></ul>
+    </aside>
+
+    <main class="wheel-stage">
+      <div class="wheel-wrap">
+        <canvas id="wheelCanvas" width="720" height="720" aria-label="Wheel"></canvas>
+        <button id="spinBtn" class="spin-btn" aria-label="Spin wheel"></button>
+        <div id="pointer" class="pointer pointer-system" aria-hidden="true"></div>
+        <div id="emptyState" class="empty-state">Add items</div>
+      </div>
+    </main>
+  </div>
+
+  <div id="settingsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-backdrop" data-close="true"></div>
+    <div class="modal-content">
+      <h3 id="settingsTitle">Settings</h3>
+      <form id="settingsForm" class="settings-grid">
+        <label>Background color <input id="bgColor" type="color" /></label>
+        <label>Theme <select id="themeName"></select></label>
+        <label><input id="borderEnabled" type="checkbox" /> Sector border enabled</label>
+        <label>Border color <input id="borderColor" type="color" /></label>
+        <label>Border thickness (0.5–8) <input id="borderWidth" type="number" min="0.5" max="8" step="0.5" /></label>
+        <label>Font family
+          <select id="fontFamily"></select>
+        </label>
+        <label>Font size (10–24) <input id="fontSize" type="number" min="10" max="24" step="1" /></label>
+        <label><input id="truncateText" type="checkbox" /> Truncate long text</label>
+        <label>Wheel size (30–100 vh)
+          <input id="wheelSize" type="range" min="30" max="100" step="1" />
+          <span id="wheelSizeValue"></span>
+        </label>
+        <label>Spin duration (1–15 sec) <input id="spinDuration" type="number" min="1" max="15" step="1" /></label>
+        <label>Center image path (imgs/...)
+          <input id="centerImage" type="text" placeholder="imgs/center.png" />
+        </label>
+        <label>Pointer type
+          <select id="pointerType">
+            <option value="system">system</option>
+            <option value="image">image</option>
+          </select>
+        </label>
+        <label>Pointer image path (imgs/...)
+          <input id="pointerImage" type="text" placeholder="imgs/pointer.png" />
+        </label>
+      </form>
+      <div class="modal-actions">
+        <button id="exportSettingsBtn">Export settings.json</button>
+        <label class="file-btn">Import settings.json
+          <input id="importSettingsInput" type="file" accept="application/json,.json" />
+        </label>
+        <button id="closeSettingsBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="winnerOverlay" class="winner-overlay hidden">
+    <div class="winner-backdrop" data-close="true"></div>
+    <div class="winner-card" role="alertdialog" aria-modal="true">
+      <div id="winnerText" class="winner-text"></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
