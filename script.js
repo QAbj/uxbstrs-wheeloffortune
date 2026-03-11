@@ -33,7 +33,8 @@ let state = {
   },
   isSpinning: false,
   rotation: 0,
-  centerImageObj: null
+  centerImageObj: null,
+  winnerCardMode: 'dock-under-wheel'
 };
 
 const el = {
@@ -52,8 +53,11 @@ const el = {
   settingsBtn: document.getElementById('settingsBtn'),
   settingsModal: document.getElementById('settingsModal'),
   closeSettingsBtn: document.getElementById('closeSettingsBtn'),
-  winnerOverlay: document.getElementById('winnerOverlay'),
-  winnerText: document.getElementById('winnerText'),
+  winnerHitArea: document.getElementById('winnerHitArea'),
+  resultCard: document.getElementById('resultCard'),
+  resultSlotPrev: document.getElementById('resultSlotPrev'),
+  resultSlotCurrent: document.getElementById('resultSlotCurrent'),
+  resultSlotNext: document.getElementById('resultSlotNext'),
   pointer: document.getElementById('pointer'),
   exportItemsBtn: document.getElementById('exportItemsBtn'),
   importItemsInput: document.getElementById('importItemsInput'),
@@ -171,13 +175,15 @@ function bindEvents() {
   document.addEventListener('click', (e) => {
     if (e.target.dataset.close === 'true') {
       el.settingsModal.classList.add('hidden');
-      el.winnerOverlay.classList.add('hidden');
+    }
+    if (e.target.dataset.close === 'winner') {
+      dockWinnerCard();
     }
   });
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      el.winnerOverlay.classList.add('hidden');
+      dockWinnerCard();
       el.settingsModal.classList.add('hidden');
     }
   });
@@ -194,7 +200,7 @@ function bindEvents() {
       state.settings.borderColor = el.borderColor.value;
       state.settings.borderWidth = clamp(parseFloat(el.borderWidth.value) || 1, 0.5, 8);
       state.settings.fontFamily = el.fontFamily.value;
-      state.settings.fontSize = clamp(parseInt(el.fontSize.value, 10) || 14, 10, 24);
+      state.settings.fontSize = clamp(parseInt(el.fontSize.value, 10) || 14, 10, 48);
       state.settings.truncateText = el.truncateText.checked;
       state.settings.wheelSizeVh = clamp(parseInt(el.wheelSize.value, 10) || 80, 30, 100);
       state.settings.spinDurationSec = clamp(parseInt(el.spinDuration.value, 10) || 5, 1, 15);
@@ -257,6 +263,7 @@ function renderAll() {
   renderItemsTextarea();
   renderModifierMatrix();
   drawWheel();
+  updateResultCardFromPointer();
   const noItems = state.items.length === 0;
   el.spinBtn.disabled = noItems || state.isSpinning;
   el.emptyState.style.display = noItems ? 'flex' : 'none';
@@ -280,6 +287,9 @@ function renderModifierMatrix() {
   state.itemModel.baseItems.forEach((base) => {
     const row = document.createElement('div');
     row.className = 'matrix-row';
+    if (base.visible === false) {
+      row.classList.add('hidden-item');
+    }
     const config = state.itemModel.modifiersById[base.id] || defaultModifierConfig();
 
     const itemLabel = document.createElement('span');
@@ -303,22 +313,22 @@ function renderModifierMatrix() {
       row.appendChild(wrap);
     });
 
-    const removeWrap = document.createElement('span');
-    removeWrap.className = 'matrix-col-remove';
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'matrix-delete-btn';
-    removeBtn.type = 'button';
-    removeBtn.setAttribute('aria-label', `Remove ${base.text}`);
-    removeBtn.innerHTML = '<img src="imgs/delete.svg" alt="" />';
-    removeBtn.addEventListener('click', () => {
-      state.itemModel.baseItems = state.itemModel.baseItems.filter((it) => it.id !== base.id);
-      delete state.itemModel.modifiersById[base.id];
+    const visibilityWrap = document.createElement('span');
+    visibilityWrap.className = 'matrix-col-visibility';
+    const visibilityBtn = document.createElement('button');
+    visibilityBtn.className = 'matrix-visibility-btn';
+    visibilityBtn.type = 'button';
+    const isVisible = base.visible !== false;
+    visibilityBtn.setAttribute('aria-label', `${isVisible ? 'Hide' : 'Show'} ${base.text}`);
+    visibilityBtn.innerHTML = `<img src="${isVisible ? 'imgs/view-on.svg' : 'imgs/view-off.svg'}" alt="" />`;
+    visibilityBtn.addEventListener('click', () => {
+      base.visible = base.visible === false;
       rebuildDerivedItems();
       saveItems();
       renderAll();
     });
-    removeWrap.appendChild(removeBtn);
-    row.appendChild(removeWrap);
+    visibilityWrap.appendChild(visibilityBtn);
+    row.appendChild(visibilityWrap);
 
     el.modifierMatrix.appendChild(row);
   });
@@ -342,7 +352,7 @@ function syncBaseItemsFromTextarea() {
       nextModifiers[existing.id] = state.itemModel.modifiersById[existing.id] || defaultModifierConfig();
       return;
     }
-    const newItem = { id: makeId(), text: line };
+    const newItem = { id: makeId(), text: line, visible: true };
     updatedBaseItems.push(newItem);
     nextModifiers[newItem.id] = defaultModifierConfig();
   });
@@ -355,6 +365,7 @@ function syncBaseItemsFromTextarea() {
 function rebuildDerivedItems() {
   const derived = [];
   state.itemModel.baseItems.forEach((base) => {
+    if (base.visible === false) return;
     const config = state.itemModel.modifiersById[base.id] || defaultModifierConfig();
     MODIFIERS.forEach((modifier) => {
       if (config[modifierKey(modifier)]) {
@@ -367,9 +378,10 @@ function rebuildDerivedItems() {
 
 function exportItemModel() {
   return {
-    baseItems: state.itemModel.baseItems.map((it) => it.text),
+    baseItems: state.itemModel.baseItems.map((it) => ({ text: it.text, visible: it.visible !== false })),
     modifiers: state.itemModel.baseItems.map((it) => ({
       item: it.text,
+      visible: it.visible !== false,
       enabled: enabledModifiers(state.itemModel.modifiersById[it.id])
     }))
   };
@@ -378,9 +390,18 @@ function exportItemModel() {
 function sanitizeItemModel(raw) {
   if (raw && typeof raw === 'object' && !Array.isArray(raw) && Array.isArray(raw.baseItems) && Array.isArray(raw.modifiers)) {
     const baseItems = raw.baseItems
-      .map((text) => (typeof text === 'string' ? text.trim() : ''))
-      .filter(Boolean)
-      .map((text) => ({ id: makeId(), text }));
+      .map((entry, idx) => {
+        const modifierEntry = raw.modifiers[idx];
+        if (typeof entry === 'string') {
+          return { text: entry.trim(), visible: typeof modifierEntry?.visible === 'boolean' ? modifierEntry.visible : true };
+        }
+        if (entry && typeof entry === 'object') {
+          return { text: typeof entry.text === 'string' ? entry.text.trim() : '', visible: typeof entry.visible === 'boolean' ? entry.visible : true };
+        }
+        return { text: '', visible: true };
+      })
+      .filter((entry) => Boolean(entry.text))
+      .map((entry) => ({ id: makeId(), text: entry.text, visible: entry.visible }));
 
     const modifiersById = {};
     baseItems.forEach((base, idx) => {
@@ -404,13 +425,13 @@ function sanitizeItemModel(raw) {
     if (!keyMap.has(entry.text)) {
       const id = makeId();
       keyMap.set(entry.text, id);
-      grouped.push({ id, text: entry.text, config: defaultModifierConfig() });
+      grouped.push({ id, text: entry.text, visible: true, config: defaultModifierConfig() });
     }
     const found = grouped.find((it) => it.text === entry.text);
     found.config[modifierKey(entry.modifier)] = true;
   });
 
-  const baseItems = grouped.map((it) => ({ id: it.id, text: it.text }));
+  const baseItems = grouped.map((it) => ({ id: it.id, text: it.text, visible: it.visible }));
   const modifiersById = {};
   grouped.forEach((it) => {
     modifiersById[it.id] = it.config;
@@ -457,9 +478,11 @@ function makeId() {
 
 function updateLayout() {
   const vh = state.settings.wheelSizeVh;
-  const sizePx = Math.min((window.innerHeight * vh) / 100, window.innerWidth - 120);
+  const viewportBound = Math.min(window.innerWidth - 80, window.innerHeight - 180);
+  const sizePx = Math.min((window.innerHeight * vh) / 100, viewportBound);
   const finalSize = Math.max(300, sizePx);
   const wrap = document.querySelector('.wheel-wrap');
+  document.documentElement.style.setProperty('--wheel-size', `${finalSize}px`);
   wrap.style.width = `${finalSize}px`;
   wrap.style.height = `${finalSize}px`;
 
@@ -528,7 +551,9 @@ function drawWheel() {
 
 function startSpin() {
   if (state.isSpinning || state.items.length === 0) return;
+  dockWinnerCard();
   state.isSpinning = true;
+  el.resultCard.classList.add('slot-cycling');
   renderAll();
 
   const selectedIndex = Math.floor(Math.random() * state.items.length);
@@ -548,12 +573,14 @@ function startSpin() {
     const eased = 1 - Math.pow(1 - t, 3);
     state.rotation = start + delta * eased;
     drawWheel();
+    updateResultCardFromPointer();
 
     if (t < 1) {
       requestAnimationFrame(frame);
     } else {
       state.rotation = normalizedAngle(state.rotation);
       state.isSpinning = false;
+      el.resultCard.classList.remove('slot-cycling');
       renderAll();
       showWinner(state.items[selectedIndex]);
     }
@@ -563,8 +590,53 @@ function startSpin() {
 }
 
 function showWinner(item) {
-  el.winnerText.textContent = `${item.text}${item.modifier ? ` ${item.modifier}` : ''}`;
-  el.winnerOverlay.classList.remove('hidden');
+  updateResultCard(item);
+  state.winnerCardMode = 'center-on-wheel';
+  el.resultCard.classList.remove('dock-under-wheel');
+  el.resultCard.classList.add('center-on-wheel');
+  el.winnerHitArea.classList.remove('hidden');
+}
+
+function dockWinnerCard() {
+  state.winnerCardMode = 'dock-under-wheel';
+  el.resultCard.classList.remove('center-on-wheel');
+  el.resultCard.classList.add('dock-under-wheel');
+  el.winnerHitArea.classList.add('hidden');
+}
+
+function updateResultCardFromPointer() {
+  if (state.winnerCardMode === 'center-on-wheel' && !state.isSpinning) return;
+  if (state.items.length === 0) {
+    el.resultSlotPrev.textContent = '';
+    el.resultSlotCurrent.textContent = 'No active items';
+    el.resultSlotNext.textContent = '';
+    return;
+  }
+  const index = currentPointerIndex();
+  updateResultCard(state.items[index], index);
+}
+
+function updateResultCard(item, index = -1) {
+  if (!item) return;
+  const currentIndex = index >= 0 ? index : state.items.findIndex((entry) => entry.text === item.text && entry.modifier === item.modifier);
+  const total = state.items.length;
+  const prev = total > 0 ? state.items[(currentIndex - 1 + total) % total] : null;
+  const next = total > 0 ? state.items[(currentIndex + 1) % total] : null;
+  el.resultSlotPrev.textContent = formatItem(prev);
+  el.resultSlotCurrent.textContent = formatItem(item);
+  el.resultSlotNext.textContent = formatItem(next);
+}
+
+function currentPointerIndex() {
+  if (state.items.length === 0) return -1;
+  const slice = (Math.PI * 2) / state.items.length;
+  const angleLocal = normalizedAngle(-state.rotation);
+  return Math.floor(angleLocal / slice) % state.items.length;
+}
+
+function formatItem(item) {
+  if (!item) return '';
+  return `${item.text}${item.modifier ? ` ${item.modifier}` : ''}`;
 }
 
 function updatePointerUI() {
@@ -604,7 +676,7 @@ function sanitizeSettings(raw) {
     borderColor: isColor(raw.borderColor) ? raw.borderColor : state.settings.borderColor,
     borderWidth: clamp(parseFloat(raw.borderWidth) || state.settings.borderWidth, 0.5, 8),
     fontFamily: fonts.includes(raw.fontFamily) ? raw.fontFamily : state.settings.fontFamily,
-    fontSize: clamp(parseInt(raw.fontSize, 10) || state.settings.fontSize, 10, 24),
+    fontSize: clamp(parseInt(raw.fontSize, 10) || state.settings.fontSize, 10, 48),
     truncateText: typeof raw.truncateText === 'boolean' ? raw.truncateText : state.settings.truncateText,
     wheelSizeVh: clamp(parseInt(raw.wheelSizeVh, 10) || state.settings.wheelSizeVh, 30, 100),
     spinDurationSec: clamp(parseInt(raw.spinDurationSec, 10) || state.settings.spinDurationSec, 1, 15),

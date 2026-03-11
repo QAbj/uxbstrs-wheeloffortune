@@ -52,6 +52,15 @@
         <button id="spinBtn" class="spin-btn" aria-label="Spin wheel"></button>
         <div id="pointer" class="pointer pointer-system" aria-hidden="true"></div>
         <div id="emptyState" class="empty-state">Add items</div>
+        <div id="resultCard" class="result-card dock-under-wheel" role="status" aria-live="polite">
+          <div class="result-slot-window">
+            <div id="resultSlotTrack" class="result-slot-track">
+              <div id="resultSlotPrev" class="result-line muted"></div>
+              <div id="resultSlotCurrent" class="result-line current"></div>
+              <div id="resultSlotNext" class="result-line muted"></div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -69,7 +78,7 @@
         <label>Font family
           <select id="fontFamily"></select>
         </label>
-        <label>Font size (10–24) <input id="fontSize" type="number" min="10" max="24" step="1" /></label>
+        <label>Font size (10–48) <input id="fontSize" type="number" min="10" max="48" step="1" /></label>
         <label><input id="truncateText" type="checkbox" /> Truncate long text</label>
         <label>Wheel size (30–100 vh)
           <input id="wheelSize" type="range" min="30" max="100" step="1" />
@@ -99,12 +108,7 @@
     </div>
   </div>
 
-  <div id="winnerOverlay" class="winner-overlay hidden">
-    <div class="winner-backdrop" data-close="true"></div>
-    <div class="winner-card" role="alertdialog" aria-modal="true">
-      <div id="winnerText" class="winner-text"></div>
-    </div>
-  </div>
+  <div id="winnerHitArea" class="winner-hit-area hidden" data-close="winner"></div>
 
   <script src="script.js"></script>
 </body>
