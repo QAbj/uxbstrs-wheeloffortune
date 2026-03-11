@@ -1,5 +1,5 @@
 :root {
-  --panel-width: 340px;
+  --panel-width: 450px;
   --wheel-size: min(80vh, 80vw);
 }
 * { box-sizing: border-box; }
@@ -230,7 +230,7 @@ button, .file-btn {
 .modal-content {
   position: relative;
   z-index: 1;
-  max-width: 560px;
+  max-width: 660px;
   margin: 70px auto;
   background: #fff;
   border-radius: 10px;
@@ -249,11 +249,11 @@ button, .file-btn {
 .result-card {
   position: absolute;
   left: 50%;
-  width: min(420px, calc(var(--wheel-size) * 0.82));
-  background: rgba(4, 7, 12, 0.88);
+  width: min(600px, calc(var(--wheel-size) * 0.82));
+  background: rgba(255, 255, 255, 1);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 12px;
-  color: #ebeff7;
+  color: #050505;
   text-align: center;
   z-index: 26;
   transition: top 0.42s ease, transform 0.42s ease, box-shadow 0.42s ease;
@@ -282,7 +282,7 @@ button, .file-btn {
   align-items: center;
   justify-content: center;
   padding: 0 14px;
-  font-size: 24px;
+  font-size: 32px;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;

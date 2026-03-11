@@ -1,5 +1,89 @@
-[
-  { "text": "Design Standards", "modifier": "" },
-  { "text": "Design Standards", "modifier": "🇬🇧" },
-  { "text": "Visual", "modifier": "🔀" }
-]
+{
+  "baseItems": [
+    {
+      "text": "Design Standards",
+      "visible": true
+    },
+    {
+      "text": "Visual",
+      "visible": false
+    },
+    {
+      "text": "Accessibility",
+      "visible": true
+    },
+    {
+      "text": "Navigation & IA",
+      "visible": true
+    },
+    {
+      "text": "Main Flow",
+      "visible": true
+    },
+    {
+      "text": "Exceptional Flow",
+      "visible": true
+    },
+    {
+      "text": "Functionality, Performance & Stability",
+      "visible": true
+    }
+  ],
+  "modifiers": [
+    {
+      "item": "Design Standards",
+      "visible": true,
+      "enabled": [
+        "default",
+        "🔀",
+        "🇬🇧"
+      ]
+    },
+    {
+      "item": "Visual",
+      "visible": false,
+      "enabled": [
+        "default",
+        "🔀"
+      ]
+    },
+    {
+      "item": "Accessibility",
+      "visible": true,
+      "enabled": [
+        "default",
+        "🔀"
+      ]
+    },
+    {
+      "item": "Navigation & IA",
+      "visible": true,
+      "enabled": [
+        "default",
+        "🔀"
+      ]
+    },
+    {
+      "item": "Main Flow",
+      "visible": true,
+      "enabled": [
+        "default",
+        "🤬"
+      ]
+    },
+    {
+      "item": "Exceptional Flow",
+      "visible": true,
+      "enabled": [
+        "default"
+      ]
+    },
+    {
+      "item": "Functionality, Performance & Stability",
+      "visible": true,
+      "enabled": [
+        "default"
+      ]
+    }
+  ]
+}
