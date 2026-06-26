@@ -195,7 +195,7 @@ button, .file-btn {
   width: 0; height: 0;
   border-top: 18px solid transparent;
   border-bottom: 18px solid transparent;
-  border-left: 28px solid #111;
+  border-left: 28px solid #2e2a2a;
 }
 .pointer-image {
   width: 40px;

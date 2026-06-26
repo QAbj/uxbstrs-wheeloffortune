@@ -6,7 +6,7 @@
     },
     {
       "text": "Visual",
-      "visible": false
+      "visible": true
     },
     {
       "text": "Accessibility",
@@ -35,16 +35,19 @@
       "visible": true,
       "enabled": [
         "default",
+        "🤬",
         "🔀",
         "🇬🇧"
       ]
     },
     {
       "item": "Visual",
-      "visible": false,
+      "visible": true,
       "enabled": [
         "default",
-        "🔀"
+        "🤬",
+        "🔀",
+        "🇬🇧"
       ]
     },
     {
@@ -52,7 +55,8 @@
       "visible": true,
       "enabled": [
         "default",
-        "🔀"
+        "🤬",
+        "blitz"
       ]
     },
     {
@@ -60,7 +64,7 @@
       "visible": true,
       "enabled": [
         "default",
-        "🔀"
+        "blitz"
       ]
     },
     {
@@ -68,21 +72,25 @@
       "visible": true,
       "enabled": [
         "default",
-        "🤬"
+        "🤬",
+        "🇬🇧"
       ]
     },
     {
       "item": "Exceptional Flow",
       "visible": true,
       "enabled": [
-        "default"
+        "default",
+        "🤬",
+        "blitz"
       ]
     },
     {
       "item": "Functionality, Performance & Stability",
       "visible": true,
       "enabled": [
-        "default"
+        "default",
+        "blitz"
       ]
     }
   ]

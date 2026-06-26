@@ -7,7 +7,7 @@ const defaultThemes = {
   'mode-classic': ['#ffcc00', '#ff6600', '#cc3300', '#ff9900'],
   'mode-cool': ['#264653', '#2a9d8f', '#8ab17d', '#457b9d']
 };
-const MODIFIERS = ['', '🤬', '🔀', '🇬🇧', '``'];
+const MODIFIERS = ['', '🤬', '🔀', '🇬🇧', '⚡️'];
 
 let themes = { ...defaultThemes };
 let state = {
@@ -281,7 +281,7 @@ function renderModifierMatrix() {
   el.modifierMatrix.innerHTML = '';
   const header = document.createElement('div');
   header.className = 'matrix-header';
-  header.innerHTML = '<span>item</span><span>default</span><span>🤬</span><span>🔀</span><span>🇬🇧</span><span>``</span><span></span>';
+  header.innerHTML = '<span>item</span><span>default</span><span>🤬</span><span>🔀</span><span>🇬🇧</span><span>⚡️</span><span></span>';
   el.modifierMatrix.appendChild(header);
 
   state.itemModel.baseItems.forEach((base) => {
@@ -412,7 +412,7 @@ function sanitizeItemModel(raw) {
         angry: enabled.includes('🤬'),
         random: enabled.includes('🔀'),
         english: enabled.includes('🇬🇧'),
-        blitz: enabled.includes('blitz') || enabled.includes('``')
+        blitz: enabled.includes('blitz') || enabled.includes('⚡️')
       };
     });
     return { baseItems, modifiersById };
@@ -462,7 +462,7 @@ function modifierKey(modifier) {
   if (modifier === '🤬') return 'angry';
   if (modifier === '🔀') return 'random';
   if (modifier === '🇬🇧') return 'english';
-  if (modifier === '``') return 'blitz';
+  if (modifier === '⚡️') return 'blitz';
   return 'default';
 }
 
